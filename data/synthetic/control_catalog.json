@@ -1,0 +1,93 @@
+[
+  {
+    "id": "UC-01",
+    "name": "Documented business justification and use case description",
+    "description": "A written one-pager describing the problem, the proposed AI approach, and why it is needed, filed with the intake record.",
+    "required_tiers": ["low", "medium", "high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-02",
+    "name": "Data inventory and sensitivity classification sign-off",
+    "description": "The business owner and a data steward confirm exactly which data fields flow into the system and that the declared sensitivity tier is accurate.",
+    "required_tiers": ["medium", "high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-03",
+    "name": "Data Processing Agreement (DPA) review",
+    "description": "Legal/privacy review of the data processing agreement with any external party that will receive, host, or train on company data.",
+    "required_tiers": [],
+    "required_if_external_data_sharing": true
+  },
+  {
+    "id": "UC-04",
+    "name": "Human-in-the-loop review of outputs before external use",
+    "description": "A qualified human reviews and approves system outputs before they reach an external user or are acted upon externally.",
+    "required_tiers": ["medium", "high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-05",
+    "name": "External legal review of training/data sourcing",
+    "description": "Outside counsel or the legal team reviews the provenance and licensing of any data used to train, fine-tune, or ground the model.",
+    "required_tiers": ["high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-06",
+    "name": "Security architecture review (access control, encryption, logging)",
+    "description": "Security reviews authentication, authorization, encryption in transit/at rest, and audit logging for the system before launch.",
+    "required_tiers": ["medium", "high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-07",
+    "name": "Model/vendor security and privacy due diligence questionnaire",
+    "description": "The model or platform provider completes a standard security and privacy questionnaire, reviewed by security and privacy.",
+    "required_tiers": ["medium", "high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-08",
+    "name": "Bias, fairness, and disparate-impact evaluation",
+    "description": "A documented evaluation of the system's outputs across protected classes or user segments before it can influence decisions about people.",
+    "required_tiers": ["high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-09",
+    "name": "Documented incident response and rollback / kill-switch plan",
+    "description": "A written plan for how the team detects, contains, and reverts a bad model behavior in production, including who can pull the kill switch.",
+    "required_tiers": ["high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-10",
+    "name": "Ongoing performance and drift monitoring plan",
+    "description": "A defined cadence and owner for checking that the system's real-world performance and error rate have not drifted from evaluation-time results.",
+    "required_tiers": ["medium", "high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-11",
+    "name": "AI-use disclosure to end users or affected individuals",
+    "description": "End users or affected individuals are told, in plain language, that AI is involved in producing the content or decision they are seeing.",
+    "required_tiers": ["medium", "high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-12",
+    "name": "Privacy impact assessment (PIA/DPIA)",
+    "description": "A formal privacy impact assessment covering lawful basis, data minimization, and individual rights, completed before launch.",
+    "required_tiers": ["high"],
+    "required_if_external_data_sharing": false
+  },
+  {
+    "id": "UC-13",
+    "name": "Records retention and audit logging policy",
+    "description": "A documented retention schedule for inputs, outputs, and decision logs, consistent with company records-management policy.",
+    "required_tiers": ["medium", "high"],
+    "required_if_external_data_sharing": false
+  }
+]

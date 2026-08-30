@@ -1,0 +1,20 @@
+[
+  {
+    "timestamp": "2026-06-12T14:03:00Z",
+    "use_case_name": "Meeting notes summarizer",
+    "business_owner": "Priya Nandakumar",
+    "risk_tier": "low",
+    "risk_score": 1,
+    "summary": "Assistive summarization of internal meeting notes for internal staff, with human review present and no external data sharing. Assessed as low risk; 1 control required.",
+    "required_control_ids": ["UC-01"]
+  },
+  {
+    "timestamp": "2026-07-02T09:47:00Z",
+    "use_case_name": "Support ticket triage copilot",
+    "business_owner": "Devon Ashworth",
+    "risk_tier": "medium",
+    "risk_score": 9,
+    "summary": "Semi-autonomous triage of confidential support tickets for internal support agents, affecting medium-impact decisions with no human review present and no external data sharing. Assessed as medium risk; 8 controls required.",
+    "required_control_ids": ["UC-01", "UC-02", "UC-04", "UC-06", "UC-07", "UC-10", "UC-11", "UC-13"]
+  }
+]
