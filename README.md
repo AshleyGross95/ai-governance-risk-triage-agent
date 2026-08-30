@@ -2,13 +2,29 @@
 
 **Turns a new AI-use-case proposal into a scored risk tier, a required-controls checklist, a draft RACI, and a logged governance decision in minutes instead of weeks of back-and-forth email.**
 
-> **Disclaimer:** This is an operating-model demonstration built entirely on synthetic data. It is **not legal, privacy, or security advice**, and the scoring rubric below is illustrative — not a substitute for your organization's actual AI governance policy or legal review.
+> **Disclaimer:** This is an operating-model demonstration built entirely on synthetic data. It is **not legal, privacy, or security advice**, and the scoring rubric, control catalog, and RACI defaults below are illustrative — not a certified compliance framework and not a substitute for your organization's actual AI governance policy or legal review. **There is no real authentication or authorization in this app** — every "role" is a display label, not an access control.
 
 ## What this demonstrates
 
 - **Structured intake as the front door to AI governance** — every proposed AI use case answers the same fixed questionnaire, so risk decisions are made on comparable inputs instead of ad hoc conversations.
 - **Auditable, rule-based risk scoring** — the risk tier is produced by a small, documented, points-based rubric (not a model's judgment call), so any reviewer can recompute the tier by hand and challenge it.
 - **Controls, accountability, and a paper trail as one workflow** — the same assessment that produces a risk tier also pulls the applicable controls from a standing catalog, drafts a RACI, and appends an immutable-style decision-log entry, mirroring how a real governance/risk function operates.
+
+## What this demo is / What this demo is not
+
+**Is:**
+
+- A deterministic, auditable rubric that maps a structured intake questionnaire to a risk tier, a required-controls list, and a draft RACI.
+- A working local Streamlit app you can run and click through end-to-end against synthetic data.
+- An illustration of an AI-governance *operating model* — how the pieces (intake, scoring, controls, accountability, logging) fit together.
+
+**Is not:**
+
+- Real authentication or authorization — there is no login, and no role in the UI is access-controlled; every "role" is just a display label.
+- A live integration beyond the optional Claude narration call — there is no real CRM, ticketing, HRIS, or data-catalog connection; the control catalog and decision log are local JSON files.
+- A hosted deployment — there is no live/hosted demo URL. Run it locally with the Quickstart commands above.
+- A certified compliance framework — the control catalog, RACI defaults, and scoring rubric are illustrative examples, not a substitute for your organization's actual legal, privacy, and security review process, and not a certified standard (e.g. ISO, NIST, SOC 2).
+- Populated with anything but synthetic, fictional data.
 
 ## Demo moment
 
@@ -118,6 +134,27 @@ pytest
 ```
 
 `tests/test_engine.py` asserts three fixtures land in low/medium/high per the documented rubric, confirms `external_data_sharing=True` always pulls in the DPA control regardless of tier, checks the high-tier RACI escalation, and verifies the decision log accumulates entries correctly.
+
+## Integration status
+
+| Integration | Status | Notes |
+|---|---|---|
+| LLM narration (Claude) | `mock` by default / `real` when `MOCK_MODE=false` + a valid `ANTHROPIC_API_KEY` | The only integration in this repo with an optional live path. Only rewrites the narrative paragraph; never changes the tier, controls, or RACI. Falls back to the deterministic template on any failure. |
+| Control catalog | `mock` | Static local JSON file (`data/synthetic/control_catalog.json`), not a connection to a real GRC/policy system. |
+| Decision log | `mock` | Append-only local JSON file (`data/synthetic/decision_log.json`), not a real ticketing queue or audit-grade write-once store. |
+| Requester / directory lookup | `planned` | No real employee/HR-directory integration exists; `business_owner` is free text today. See Roadmap. |
+
+## Known limitations
+
+**Prototype limitations (intentionally out of scope for a demo):**
+
+- No real authentication or authorization — anyone running the app locally sees and can do everything; there are no access-controlled roles.
+- No database — the control catalog and decision log are local JSON files read/written on disk, not a real datastore with concurrency control.
+- No real directory/HRIS/ticketing integration — `business_owner` and `model_provider` are free-text fields, not looked up against a real system of record.
+- The rubric, control catalog, and RACI defaults are static and unversioned in this prototype — a real deployment would need change control over them (see Roadmap).
+- No hosted demo for this prototype — run locally with the Quickstart commands above.
+
+**Defects found during this audit:** none. The full test suite (`pytest`, 9/9 passing), `python -m py_compile` on every module, and a direct function-level trace of the intake -> score -> controls -> RACI -> decision-log workflow all passed.
 
 ## Roadmap
 
