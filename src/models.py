@@ -20,7 +20,19 @@ DATA_SENSITIVITY_LEVELS = ("public", "internal", "confidential", "restricted")
 INTENDED_USERS_OPTIONS = ("internal", "external", "both")
 AUTOMATION_LEVELS = ("assistive", "semi_autonomous", "fully_autonomous")
 DECISION_IMPACT_LEVELS = ("low", "medium", "high")
-RISK_TIERS = ("low", "medium", "high")
+RISK_TIERS = ("minimal", "low", "moderate", "high", "restricted")
+
+# Human-facing label for each tier key. Every tier key is displayed via this
+# map rather than `.upper()`-ing the key directly, because the most severe
+# tier's display name is a phrase ("Restricted pending formal review"), not
+# a single word.
+TIER_DISPLAY_NAMES = {
+    "minimal": "Minimal",
+    "low": "Low",
+    "moderate": "Moderate",
+    "high": "High",
+    "restricted": "Restricted pending formal review",
+}
 
 # Fixed set of stakeholder roles every RACI table covers, in display order.
 RACI_ROLES = ("Business Owner", "Data Privacy", "Security", "Legal", "IT", "End Users")
@@ -68,7 +80,7 @@ class IntakeRequest:
 class RiskAssessment:
     """Output of the deterministic scoring engine for one IntakeRequest."""
 
-    risk_tier: str                          # low | medium | high
+    risk_tier: str                          # minimal | low | moderate | high | restricted
     risk_score: int                         # raw points total, for transparency/audit
     risk_factors: List[str]                 # human-readable reasons that drove the tier
     required_controls: List[str]            # control names pulled from the catalog

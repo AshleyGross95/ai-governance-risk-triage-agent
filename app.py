@@ -13,7 +13,9 @@ for switching to live mode.
 
 from __future__ import annotations
 
+import json
 import os
+from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -32,14 +34,109 @@ from src.models import (
     INTENDED_USERS_OPTIONS,
     RACI_ROLES,
     RACI_VALUES,
+    RISK_TIERS,
+    TIER_DISPLAY_NAMES,
     IntakeRequest,
 )
 
+# Verified by running `pytest -v` in this repo and counting the passing
+# tests (see docs/evaluation-plan.md). Update this literal only after
+# re-running the suite and confirming the new count.
+VERIFIED_TEST_COUNT = 62
+
+APP_DIR = Path(__file__).resolve().parent
+SAMPLE_USE_CASES_PATH = APP_DIR / "data" / "synthetic" / "sample_use_cases.json"
+
 st.set_page_config(page_title="AI Governance & Risk Triage Agent", page_icon="🛡️", layout="wide")
+
+FIELD_DEFAULTS = {
+    "use_case_name": "",
+    "business_owner": "",
+    "model_provider": "",
+    "data_sensitivity": DATA_SENSITIVITY_LEVELS[1],  # "internal"
+    "intended_users": INTENDED_USERS_OPTIONS[0],     # "internal"
+    "automation_level": AUTOMATION_LEVELS[0],        # "assistive"
+    "decision_impact": DECISION_IMPACT_LEVELS[0],    # "low"
+    "human_review_present": True,
+    "external_data_sharing": False,
+    "evaluation_method": "",
+}
+
+TIER_COLOR = {
+    "minimal": "green",
+    "low": "blue",
+    "moderate": "orange",
+    "high": "red",
+    "restricted": "violet",
+}
 
 
 def _mock_mode() -> bool:
     return os.environ.get("MOCK_MODE", "true").strip().lower() not in ("false", "0", "no")
+
+
+@st.cache_data
+def load_sample_use_cases() -> list[dict]:
+    with open(SAMPLE_USE_CASES_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def ensure_defaults() -> None:
+    for key, value in FIELD_DEFAULTS.items():
+        if key not in st.session_state:
+            st.session_state[key] = value
+    for key in ("assessment", "request", "raci_df", "log_confirmation", "packet_md"):
+        if key not in st.session_state:
+            st.session_state[key] = None
+    if "decision_log_view_cleared" not in st.session_state:
+        st.session_state["decision_log_view_cleared"] = False
+
+
+def _clear_downstream_state() -> None:
+    """Clears the computed assessment/packet whenever the form contents
+    change out from under it (a new preset loaded, or a manual reset)."""
+    st.session_state["assessment"] = None
+    st.session_state["request"] = None
+    st.session_state["raci_df"] = None
+    st.session_state["log_confirmation"] = None
+    st.session_state["packet_md"] = None
+
+
+def apply_preset(preset: dict) -> None:
+    """Pushes one seeded sample use case's fields into session_state so the
+    intake form widgets pick them up on the next render."""
+    st.session_state["use_case_name"] = preset["use_case_name"]
+    st.session_state["business_owner"] = preset["business_owner"]
+    st.session_state["model_provider"] = preset["model_provider"]
+    st.session_state["data_sensitivity"] = preset["data_sensitivity"]
+    st.session_state["intended_users"] = preset["intended_users"]
+    st.session_state["automation_level"] = preset["automation_level"]
+    st.session_state["decision_impact"] = preset["decision_impact"]
+    st.session_state["human_review_present"] = preset["human_review_present"]
+    st.session_state["external_data_sharing"] = preset["external_data_sharing"]
+    st.session_state["evaluation_method"] = preset["evaluation_method"]
+    _clear_downstream_state()
+
+
+def on_preset_change() -> None:
+    choice = st.session_state.get("preset_choice")
+    if choice and choice != "Manual entry":
+        presets = {p["use_case_name"]: p for p in load_sample_use_cases()}
+        if choice in presets:
+            apply_preset(presets[choice])
+
+
+def reset_state() -> None:
+    """'Reset state' button: restores the intake form to blank defaults,
+    clears any generated assessment/packet, and clears the in-session
+    decision-log VIEW only. The committed data/synthetic/decision_log.json
+    file on disk is never touched by this -- the next assessment logged
+    will still append to (not replace) its existing seeded entries."""
+    for key, value in FIELD_DEFAULTS.items():
+        st.session_state[key] = value
+    st.session_state["preset_choice"] = "Manual entry"
+    _clear_downstream_state()
+    st.session_state["decision_log_view_cleared"] = True
 
 
 def _build_review_packet_markdown(request: IntakeRequest, assessment, raci: dict) -> str:
@@ -49,6 +146,7 @@ def _build_review_packet_markdown(request: IntakeRequest, assessment, raci: dict
     never allowed to change the tier, controls, or RACI values themselves."""
 
     narrative = generate_review_packet_narrative(request, assessment)
+    tier_display = TIER_DISPLAY_NAMES.get(assessment.risk_tier, assessment.risk_tier)
 
     factors_md = "\n".join(f"- {f}" for f in assessment.risk_factors)
     controls_md = "\n".join(f"- **{cid}** — {name}" for cid, name in zip(
@@ -68,7 +166,7 @@ def _build_review_packet_markdown(request: IntakeRequest, assessment, raci: dict
 
 ## Risk assessment
 
-**Risk tier: {assessment.risk_tier.upper()}** (rubric score: {assessment.risk_score})
+**Risk tier: {tier_display}** (rubric score: {assessment.risk_score})
 
 Risk factors:
 
@@ -99,15 +197,27 @@ Risk factors:
 | Evaluation method | {request.evaluation_method} |
 
 ---
-*This packet is a governance operating-model demonstration using synthetic data. It is not legal, privacy, or security advice.*
+*This packet is a governance operating-model demonstration using synthetic data. It is not legal, privacy, or security advice. This tier assignment is decision support, not a legal, privacy, or security determination -- a qualified human reviewer must confirm it.*
 """
 
 
+ensure_defaults()
+
 st.title("🛡️ AI Governance & Risk Triage Agent")
+st.caption("**Public portfolio prototype · Synthetic data**")
 st.caption(
     "Internal intake tool: proposal → deterministic risk tier → required controls → RACI → review packet → decision log."
 )
 st.caption(f"Mode: **{'MOCK (deterministic, no API calls)' if _mock_mode() else 'LIVE (Claude narrates the packet)'}**")
+
+st.warning(
+    "**Decision support, not a legal, privacy, or security determination.** This tool assigns a risk "
+    "tier and suggests controls using an illustrative, transparent rubric. It is **not legal, privacy, "
+    "or security advice**, and does not replace review by your organization's actual Legal, Privacy, "
+    "or Security teams. There is no real authentication in this app -- every role shown is a display "
+    "label, not an access control.",
+    icon="⚠️",
+)
 
 with st.expander("What this is / isn't", expanded=False):
     st.markdown(
@@ -117,34 +227,51 @@ with st.expander("What this is / isn't", expanded=False):
         "adopted policy. All data is synthetic."
     )
 
-if "assessment" not in st.session_state:
-    st.session_state.assessment = None
-    st.session_state.request = None
-    st.session_state.raci_df = None
-    st.session_state.log_confirmation = None
+metric_col1, metric_col2, metric_col3 = st.columns(3)
+metric_col1.metric("Seeded use cases", len(load_sample_use_cases()))  # len() of data/synthetic/sample_use_cases.json
+metric_col2.metric("Risk tiers", len(RISK_TIERS))                     # len() of src/models.py RISK_TIERS
+metric_col3.metric("Automated tests", VERIFIED_TEST_COUNT)            # verified `pytest -v` count, see docs/evaluation-plan.md
 
 st.header("1. Intake questionnaire")
+
+presets = load_sample_use_cases()
+preset_names = ["Manual entry"] + [p["use_case_name"] for p in presets]
+st.selectbox(
+    "Load a seeded sample use case (or fill in the form manually)",
+    preset_names,
+    key="preset_choice",
+    on_change=on_preset_change,
+    help="Loads one of the 20 fictional intake examples in data/synthetic/sample_use_cases.json, spanning all five risk tiers.",
+)
+
+reset_col, _spacer = st.columns([1, 4])
+reset_col.button(
+    "Reset state",
+    on_click=reset_state,
+    help="Clears the intake form, any generated assessment/packet, and the decision-log view for this session. Does not delete data/synthetic/decision_log.json.",
+)
 
 with st.form("intake_form"):
     col1, col2 = st.columns(2)
     with col1:
-        use_case_name = st.text_input("Use case name", placeholder="e.g. Resume screening assistant")
-        business_owner = st.text_input("Business owner", placeholder="e.g. Jordan Reyes")
-        model_provider = st.text_input("Model / provider", placeholder="e.g. Anthropic Claude")
-        data_sensitivity = st.selectbox("Data sensitivity", DATA_SENSITIVITY_LEVELS, index=1)
-        intended_users = st.selectbox("Intended users", INTENDED_USERS_OPTIONS, index=0)
-        automation_level = st.selectbox("Automation level", AUTOMATION_LEVELS, index=0)
+        st.text_input("Use case name", key="use_case_name", placeholder="e.g. Resume screening assistant")
+        st.text_input("Business owner", key="business_owner", placeholder="e.g. Jordan Reyes")
+        st.text_input("Model / provider", key="model_provider", placeholder="e.g. Anthropic Claude")
+        st.selectbox("Data sensitivity", DATA_SENSITIVITY_LEVELS, key="data_sensitivity")
+        st.selectbox("Intended users", INTENDED_USERS_OPTIONS, key="intended_users")
+        st.selectbox("Automation level", AUTOMATION_LEVELS, key="automation_level")
     with col2:
-        decision_impact = st.selectbox(
+        st.selectbox(
             "Decision impact on individuals",
             DECISION_IMPACT_LEVELS,
-            index=0,
+            key="decision_impact",
             help="Does this use case influence a consequential decision about a person (hiring, credit, access, discipline, etc.)?",
         )
-        human_review_present = st.checkbox("Human review present before outputs are used", value=True)
-        external_data_sharing = st.checkbox("Involves external data sharing (in or out)", value=False)
-        evaluation_method = st.text_area(
+        st.checkbox("Human review present before outputs are used", key="human_review_present")
+        st.checkbox("Involves external data sharing (in or out)", key="external_data_sharing")
+        st.text_area(
             "Evaluation method",
+            key="evaluation_method",
             placeholder="How will output quality/accuracy be checked before and after launch?",
         )
 
@@ -152,19 +279,22 @@ with st.form("intake_form"):
 
 if submitted:
     request = IntakeRequest(
-        use_case_name=use_case_name,
-        business_owner=business_owner,
-        data_sensitivity=data_sensitivity,
-        intended_users=intended_users,
-        automation_level=automation_level,
-        external_data_sharing=external_data_sharing,
-        model_provider=model_provider or "unspecified",
-        decision_impact=decision_impact,
-        human_review_present=human_review_present,
-        evaluation_method=evaluation_method,
+        use_case_name=st.session_state["use_case_name"],
+        business_owner=st.session_state["business_owner"],
+        data_sensitivity=st.session_state["data_sensitivity"],
+        intended_users=st.session_state["intended_users"],
+        automation_level=st.session_state["automation_level"],
+        external_data_sharing=st.session_state["external_data_sharing"],
+        model_provider=st.session_state["model_provider"] or "unspecified",
+        decision_impact=st.session_state["decision_impact"],
+        human_review_present=st.session_state["human_review_present"],
+        evaluation_method=st.session_state["evaluation_method"],
     )
     errors = request.validate()
     if errors:
+        st.error(
+            "This intake can't be assessed yet -- please fix the following before resubmitting:"
+        )
         for e in errors:
             st.error(e)
     else:
@@ -176,6 +306,8 @@ if submitted:
         )
         entry = log_decision(request, assessment)
         st.session_state.log_confirmation = entry["timestamp"]
+        st.session_state.packet_md = None
+        st.session_state.decision_log_view_cleared = False
 
 if st.session_state.assessment is not None:
     request = st.session_state.request
@@ -183,12 +315,20 @@ if st.session_state.assessment is not None:
 
     st.header("2. Risk tier — transparent, not a black box")
 
-    tier_color = {"low": "green", "medium": "orange", "high": "red"}[assessment.risk_tier]
+    tier_display = TIER_DISPLAY_NAMES.get(assessment.risk_tier, assessment.risk_tier)
+    tier_color = TIER_COLOR.get(assessment.risk_tier, "gray")
     st.markdown(
-        f"### Risk tier: :{tier_color}[{assessment.risk_tier.upper()}]  \n"
+        f"### Risk tier: :{tier_color}[{tier_display}]  \n"
         f"Rubric score: **{assessment.risk_score}** "
-        f"(0-{4} low · 5-{10} medium · 11+ high)"
+        f"(0-2 minimal · 3-6 low · 7-10 moderate · 11-14 high · 15-19 restricted pending formal review)"
     )
+    if assessment.risk_tier == "restricted":
+        st.error(
+            "This use case is **pending formal review** -- it must go through the governance "
+            "committee review and independent assessment controls below before any further work "
+            "proceeds, in addition to every control a High-tier request already requires.",
+            icon="🛑",
+        )
     st.markdown("**Why this tier — every contributing factor:**")
     for factor in assessment.risk_factors:
         st.markdown(f"- {factor}")
@@ -203,12 +343,14 @@ if st.session_state.assessment is not None:
         }
         for cid, name in zip(assessment.required_control_ids, assessment.required_controls)
     ]
-    st.dataframe(pd.DataFrame(controls_rows), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(controls_rows), width='stretch', hide_index=True)
 
     st.header("4. RACI — editable")
     st.caption(
-        "Defaults are set by risk tier (e.g. at high tier, Legal and Security move from "
-        "Consulted to Accountable sign-off). Edit any cell before generating the packet."
+        "Defaults escalate with risk tier -- e.g. Security and Legal move from Consulted to "
+        "Accountable at High, and at Restricted pending formal review, Data Privacy also becomes "
+        "Accountable and End Users move from Informed to Consulted. Edit any cell before generating "
+        "the packet."
     )
     edited_raci_df = st.data_editor(
         st.session_state.raci_df,
@@ -217,7 +359,7 @@ if st.session_state.assessment is not None:
             "Assignment": st.column_config.SelectboxColumn("Assignment", options=list(RACI_VALUES)),
         },
         hide_index=True,
-        use_container_width=True,
+        width='stretch',
         key="raci_editor",
     )
     st.session_state.raci_df = edited_raci_df
@@ -241,13 +383,22 @@ if st.session_state.assessment is not None:
             file_name=f"review_packet_{request.use_case_name.replace(' ', '_').lower()}.md",
             mime="text/markdown",
         )
+else:
+    st.caption("Submit the intake questionnaire above (or load a seeded sample use case) to see a risk assessment.")
 
 st.header("Decision log")
-log_entries = load_decision_log()
-if log_entries:
-    log_df = pd.DataFrame(log_entries)[
-        ["timestamp", "use_case_name", "business_owner", "risk_tier", "risk_score", "summary"]
-    ].sort_values("timestamp", ascending=False)
-    st.dataframe(log_df, use_container_width=True, hide_index=True)
+if st.session_state.get("decision_log_view_cleared"):
+    st.caption(
+        "Decision log view cleared for this session by **Reset state**. The committed "
+        "`data/synthetic/decision_log.json` file on disk is unchanged -- submitting a new "
+        "assessment will show the full log again, including prior entries."
+    )
 else:
-    st.caption("No assessments logged yet.")
+    log_entries = load_decision_log()
+    if log_entries:
+        log_df = pd.DataFrame(log_entries)[
+            ["timestamp", "use_case_name", "business_owner", "risk_tier", "risk_score", "summary"]
+        ].sort_values("timestamp", ascending=False)
+        st.dataframe(log_df, width='stretch', hide_index=True)
+    else:
+        st.caption("No assessments logged yet.")

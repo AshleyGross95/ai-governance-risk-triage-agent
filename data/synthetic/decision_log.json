@@ -3,18 +3,45 @@
     "timestamp": "2026-06-12T14:03:00Z",
     "use_case_name": "Meeting notes summarizer",
     "business_owner": "Priya Nandakumar",
-    "risk_tier": "low",
+    "risk_tier": "minimal",
     "risk_score": 1,
-    "summary": "Assistive summarization of internal meeting notes for internal staff, with human review present and no external data sharing. Assessed as low risk; 1 control required.",
+    "summary": "Assistive summarization of internal meeting notes for internal staff, with human review present and no external data sharing. Assessed as minimal risk; 1 control required.",
+    "required_control_ids": ["UC-01"]
+  },
+  {
+    "timestamp": "2026-06-19T10:22:00Z",
+    "use_case_name": "Internal IT ticket categorization suggester",
+    "business_owner": "Grace Lindqvist",
+    "risk_tier": "low",
+    "risk_score": 3,
+    "summary": "Semi-autonomous categorization of internal IT tickets for internal staff, with human review present and no external data sharing. Assessed as low risk; 1 control required.",
     "required_control_ids": ["UC-01"]
   },
   {
     "timestamp": "2026-07-02T09:47:00Z",
     "use_case_name": "Support ticket triage copilot",
     "business_owner": "Devon Ashworth",
-    "risk_tier": "medium",
+    "risk_tier": "moderate",
     "risk_score": 9,
-    "summary": "Semi-autonomous triage of confidential support tickets for internal support agents, affecting medium-impact decisions with no human review present and no external data sharing. Assessed as medium risk; 8 controls required.",
+    "summary": "Semi-autonomous triage of confidential support tickets for internal support agents, affecting medium-impact decisions with no human review present and no external data sharing. Assessed as moderate risk; 8 controls required.",
     "required_control_ids": ["UC-01", "UC-02", "UC-04", "UC-06", "UC-07", "UC-10", "UC-11", "UC-13"]
+  },
+  {
+    "timestamp": "2026-07-21T16:15:00Z",
+    "use_case_name": "Automated fraud-flagging system",
+    "business_owner": "Renee Castellano",
+    "risk_tier": "high",
+    "risk_score": 12,
+    "summary": "Fully-autonomous use of restricted data for external users, affecting medium-impact decisions with human review present and no external data sharing. Assessed as high risk; 12 controls required.",
+    "required_control_ids": ["UC-01", "UC-02", "UC-04", "UC-05", "UC-06", "UC-07", "UC-08", "UC-09", "UC-10", "UC-11", "UC-12", "UC-13"]
+  },
+  {
+    "timestamp": "2026-08-14T11:38:00Z",
+    "use_case_name": "AI resume-screening assistant",
+    "business_owner": "Kendra Okonkwo",
+    "risk_tier": "restricted",
+    "risk_score": 17,
+    "summary": "Fully-autonomous use of restricted data for external users, affecting high-impact decisions with no human review present and no external data sharing. Assessed as restricted risk; 14 controls required.",
+    "required_control_ids": ["UC-01", "UC-02", "UC-04", "UC-05", "UC-06", "UC-07", "UC-08", "UC-09", "UC-10", "UC-11", "UC-12", "UC-13", "UC-14", "UC-15"]
   }
 ]

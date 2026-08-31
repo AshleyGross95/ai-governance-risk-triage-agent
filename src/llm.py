@@ -21,7 +21,7 @@ from __future__ import annotations
 import os
 from typing import List
 
-from src.models import IntakeRequest, RiskAssessment
+from src.models import TIER_DISPLAY_NAMES, IntakeRequest, RiskAssessment
 
 
 def _is_mock_mode() -> bool:
@@ -40,7 +40,8 @@ def generate_mock_narrative(request: IntakeRequest, assessment: RiskAssessment) 
         f"{request.automation_level.replace('_', ' ')} AI use case using {request.model_provider}, "
         f"handling {request.data_sensitivity} data for {request.intended_users} users. "
         f"Based on the intake questionnaire, this request scores {assessment.risk_score} points "
-        f"against the governance rubric and is assessed as {assessment.risk_tier.upper()} risk. "
+        f"against the governance rubric and is assessed at the "
+        f"\"{TIER_DISPLAY_NAMES.get(assessment.risk_tier, assessment.risk_tier)}\" risk tier. "
         f"{factors_clause} As a result, {controls_count} control(s) from the standing control "
         f"catalog apply before this use case can proceed, and the RACI table below assigns "
         f"accountability across the affected stakeholder roles. This assessment should be "

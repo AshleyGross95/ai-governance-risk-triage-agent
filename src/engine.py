@@ -34,11 +34,21 @@ are summed into a single risk_score, which is then bucketed into a tier.
 
     Maximum possible score: 19
 
-Thresholds (on the summed risk_score):
+Thresholds (on the summed risk_score), bucketed into five tiers:
 
-    0-4    -> low
-    5-10   -> medium
-    11-19  -> high
+    0-2    -> Minimal
+    3-6    -> Low
+    7-10   -> Moderate
+    11-14  -> High
+    15-19  -> Restricted pending formal review
+
+Five tiers (rather than three) give the rubric room to distinguish "no
+material risk factors present" (Minimal) from "some risk factors, still
+low stakes" (Low), and to carve out a top band, Restricted pending formal
+review, for the small set of requests that combine the most severe factors
+(restricted data, full autonomy, high decision impact, no human review) and
+should not proceed through the standard High-tier control path alone —
+they require a named governance-committee review before anything else.
 
 Independently of the score, `external_data_sharing=True` always pulls the
 Data Processing Agreement (DPA) review control into `required_controls`,
@@ -72,8 +82,10 @@ _DECISION_IMPACT_POINTS = {"low": 0, "medium": 2, "high": 4}
 _NO_HUMAN_REVIEW_POINTS = 3
 _EXTERNAL_DATA_SHARING_POINTS = 2
 
-LOW_MEDIUM_THRESHOLD = 5    # score >= this -> at least medium
-MEDIUM_HIGH_THRESHOLD = 11  # score >= this -> high
+MINIMAL_LOW_THRESHOLD = 3        # score >= this -> at least low
+LOW_MODERATE_THRESHOLD = 7       # score >= this -> at least moderate
+MODERATE_HIGH_THRESHOLD = 11     # score >= this -> at least high
+HIGH_RESTRICTED_THRESHOLD = 15   # score >= this -> restricted pending formal review
 
 
 def score_risk(request: IntakeRequest) -> Tuple[str, int, List[str]]:
@@ -126,12 +138,16 @@ def score_risk(request: IntakeRequest) -> Tuple[str, int, List[str]]:
             f"Data is shared with or sourced from an external party (+{_EXTERNAL_DATA_SHARING_POINTS} pts)."
         )
 
-    if score >= MEDIUM_HIGH_THRESHOLD:
+    if score >= HIGH_RESTRICTED_THRESHOLD:
+        tier = "restricted"
+    elif score >= MODERATE_HIGH_THRESHOLD:
         tier = "high"
-    elif score >= LOW_MEDIUM_THRESHOLD:
-        tier = "medium"
-    else:
+    elif score >= LOW_MODERATE_THRESHOLD:
+        tier = "moderate"
+    elif score >= MINIMAL_LOW_THRESHOLD:
         tier = "low"
+    else:
+        tier = "minimal"
 
     if not factors:
         factors.append("No elevated-risk factors were flagged on any intake question.")
@@ -174,13 +190,27 @@ def get_required_controls(
 
 
 # Default RACI per risk tier. Note this intentionally deviates from strict
-# single-"Accountable" RACI convention: at the high tier, Legal and Security
-# both carry "A" alongside the Business Owner to represent that governance
-# requires their independent sign-off before launch, not just consultation.
-# All of this is editable by the reviewer in the Streamlit UI before the
-# review packet is generated.
+# single-"Accountable" RACI convention: accountability escalates step by step
+# as the tier rises, and at the top two tiers more than one role carries "A"
+# alongside the Business Owner, representing that governance requires their
+# independent sign-off before launch, not just consultation.
+#
+# Escalation ladder, by role, across the five tiers:
+#   Business Owner - Accountable at every tier (always owns the use case).
+#   Data Privacy   - Informed -> Consulted -> Consulted -> Consulted -> Accountable
+#   Security       - Informed -> Informed  -> Consulted -> Accountable -> Accountable
+#   Legal          - Informed -> Informed  -> Consulted -> Accountable -> Accountable
+#   IT             - Responsible at every tier (always builds/operates it).
+#   End Users      - Informed -> Informed  -> Informed  -> Informed  -> Consulted
+#
+# At Restricted pending formal review, Data Privacy joins Security and Legal
+# as Accountable (four accountable sign-offs total, alongside the Business
+# Owner) and End Users move from Informed to Consulted, reflecting that a
+# request at this tier needs input from those affected before it can proceed
+# -- the most conservative RACI the rubric produces. All of this is editable
+# by the reviewer in the Streamlit UI before the review packet is generated.
 _DEFAULT_RACI: Dict[str, Dict[str, str]] = {
-    "low": {
+    "minimal": {
         "Business Owner": "A",
         "Data Privacy": "I",
         "Security": "I",
@@ -188,7 +218,15 @@ _DEFAULT_RACI: Dict[str, Dict[str, str]] = {
         "IT": "R",
         "End Users": "I",
     },
-    "medium": {
+    "low": {
+        "Business Owner": "A",
+        "Data Privacy": "C",
+        "Security": "I",
+        "Legal": "I",
+        "IT": "R",
+        "End Users": "I",
+    },
+    "moderate": {
         "Business Owner": "A",
         "Data Privacy": "C",
         "Security": "C",
@@ -204,13 +242,21 @@ _DEFAULT_RACI: Dict[str, Dict[str, str]] = {
         "IT": "R",
         "End Users": "I",
     },
+    "restricted": {
+        "Business Owner": "A",
+        "Data Privacy": "A",
+        "Security": "A",
+        "Legal": "A",
+        "IT": "R",
+        "End Users": "C",
+    },
 }
 
 
 def build_raci(risk_tier: str) -> Dict[str, str]:
     """Returns a sensible default RACI dict for the given tier. Callers
     (the Streamlit UI) may let the user edit this before it's finalized."""
-    defaults = _DEFAULT_RACI.get(risk_tier, _DEFAULT_RACI["medium"])
+    defaults = _DEFAULT_RACI.get(risk_tier, _DEFAULT_RACI["moderate"])
     return {role: defaults.get(role, "I") for role in RACI_ROLES}
 
 
