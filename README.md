@@ -1,6 +1,8 @@
 # AI Governance & Risk Triage Agent
 
-**Maturity:** Streamlit Cloud deployment pending · Synthetic data · Transparent governance rubric
+**Maturity:** Live public demo · Synthetic data · Transparent governance rubric
+
+**Live demo:** https://ai-governance-risk-triage-agent.streamlit.app/ (verified 2026-08-31 — loaded a seeded use case, ran "Assess risk," confirmed real 5-tier rubric output with score breakdown)
 
 > **Disclaimer:** This is an operating-model demonstration built entirely on synthetic data. It is **not legal, privacy, or security advice**, and the scoring rubric, control catalog, and RACI defaults below are illustrative — not a certified compliance framework and not a substitute for your organization's actual AI governance policy or legal review. **There is no real authentication or authorization in this app** — every "role" is a display label, not an access control.
 
